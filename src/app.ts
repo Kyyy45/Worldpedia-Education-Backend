@@ -20,7 +20,7 @@ import {
 } from './routes';
 
 // Middleware
-import { errorHandler, requestLogger, requestValidator } from './middleware';
+import { globalErrorHandler, requestLogger, requestValidator } from './middleware';
 
 // Utils
 import { logger } from './utils/logger';
@@ -232,7 +232,7 @@ export const createApp = (): Express => {
    * ============================================================================
    */
 
-  app.use(errorHandler);
+  app.use(globalErrorHandler);
 
   return app;
 };
