@@ -1,0 +1,41 @@
+# ----------------------------------------------------------------
+# File Rahasia (PENTING!)
+# JANGAN PERNAH HAPUS INI DARI .gitignore
+# ----------------------------------------------------------------
+.env
+.env.*
+*.env
+
+# ----------------------------------------------------------------
+# Dependensi & Build Artifacts
+# ----------------------------------------------------------------
+# Folder dependensi Node.js
+node_modules/
+
+# Folder build hasil kompilasi TypeScript
+dist/
+build/
+
+# NPM cache
+.npm
+
+# File lock Yarn (jika suatu hari dipakai)
+yarn.lock
+
+# ----------------------------------------------------------------
+# File Log & Debugging
+# ----------------------------------------------------------------
+# Log umum
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Log dari testing.txt Anda
+cookie.txt
+jar.txt
+
+# Laporan crash
+report.*.json
+*.stackdump
