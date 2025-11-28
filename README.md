@@ -1,77 +1,99 @@
-# ============================================================================
-# SERVER CONFIGURATION
-# ============================================================================
-PORT=5000
-NODE_ENV=development
+# 📚 Worldpedia Education Backend
 
-# ============================================================================
-# DATABASE CONFIGURATION
-# ============================================================================
-# MongoDB Local (Development)
-MONGODB_URI=mongodb://localhost:27017/
+![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
+![Express](https://img.shields.io/badge/Express-v5.0-lightgrey.svg)
+![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green.svg)
+![License](https://img.shields.io/badge/license-ISC-blue.svg)
 
-# MongoDB Atlas (Production) - Uncomment and use this instead
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/worldpedia?retryWrites=true&w=majority
+Backend API untuk platform **Worldpedia Education**, sebuah sistem manajemen pembelajaran (LMS) yang mencakup manajemen kursus, pendaftaran siswa, pembayaran, dan penerbitan sertifikat otomatis.
 
-# ============================================================================
-# JWT AUTHENTICATION CONFIGURATION
-# ============================================================================
-# Generate strong secrets: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-JWT_ACCESS_SECRET=
-JWT_REFRESH_SECRET=
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
+Dibangun menggunakan arsitektur **Layered MVC** dengan **TypeScript** untuk skalabilitas dan kemudahan pemeliharaan.
 
-# ============================================================================
-# EMAIL CONFIGURATION (SMTP)
-# ============================================================================
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=noreply@worldpedia.com
+## 📋 Daftar Isi
+- [Fitur Utama](#-fitur-utama)
+- [Teknologi yang Digunakan](#-teknologi-yang-digunakan)
+- [Prasyarat](#-prasyarat)
+- [Instalasi & Setup](#-instalasi--setup)
+- [Konfigurasi Environment](#-konfigurasi-environment)
+- [Menjalankan Aplikasi](#-menjalankan-aplikasi)
+- [Dokumentasi API](#-dokumentasi-api)
+- [Struktur Folder](#-struktur-folder)
 
-# ============================================================================
-# CLOUDINARY CONFIGURATION (Image Storage)
-# ============================================================================
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
+## 🚀 Fitur Utama
+* **Autentikasi & Otorisasi**: JWT (Access & Refresh Token), Login via Google OAuth2.
+* **Manajemen User**: Role-based access control (Admin, Student, Instructor).
+* **Manajemen Kursus**: CRUD kursus, filter level, dan materi.
+* **Pendaftaran & Pembayaran**: Integrasi Payment Gateway (Midtrans).
+* **Sertifikat Otomatis**: Integrasi Google Drive API untuk generate & hosting sertifikat.
+* **Media Storage**: Upload gambar ke Cloudinary.
+* **Notifikasi Email**: SMTP Email service untuk aktivasi dan reset password.
+* **Keamanan**: Rate limiting, Helmet, Data Sanitization, HPP.
 
-# ============================================================================
-# MIDTRANS PAYMENT GATEWAY CONFIGURATION
-# ============================================================================
-MIDTRANS_SERVER_KEY=your_server_key
-MIDTRANS_CLIENT_KEY=your_client_key
-MIDTRANS_ENVIRONMENT=sandbox
+## 🛠 Teknologi yang Digunakan
+* **Runtime**: Node.js
+* **Language**: TypeScript
+* **Framework**: Express.js
+* **Database**: MongoDB (via Mongoose)
+* **Documentation**: Swagger / OpenAPI 3.0
+* **Third-Party Services**:
+    * Google Cloud Platform (OAuth, Drive)
+    * Midtrans (Payment)
+    * Cloudinary (Image Storage)
 
-# ============================================================================
-# GOOGLE OAUTH CONFIGURATION
-# ============================================================================
-GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:5000/auth/google/callback
+## Vk Prasyarat
+Sebelum memulai, pastikan Anda telah menginstal:
+* [Node.js](https://nodejs.org/) (v18 atau lebih baru)
+* [MongoDB](https://www.mongodb.com/) (Local atau Atlas)
+* Akun layanan terkait (Google Cloud, Midtrans, Cloudinary)
 
-# ============================================================================
-# GOOGLE DRIVE API CONFIGURATION (Certificate Management)
-# ============================================================================
-GOOGLE_DRIVE_FOLDER_ID=your_google_drive_folder_id
-GOOGLE_SERVICE_ACCOUNT_KEY={"type":"service_account","project_id":"...","...":"..."}
+## ⚙️ Instalasi & Setup
 
-# ============================================================================
-# CORS CONFIGURATION
-# ============================================================================
-# Allowed origins for cross-origin requests
-CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+1.  **Clone repositori ini:**
+    ```bash
+    git clone [https://github.com/Kyyy45/Worldpedia-Education-Backend.git](https://github.com/username-anda/worldpedia-education-backend.git)
+    cd worldpedia-backend
+    ```
 
-# ============================================================================
-# ADMIN CONFIGURATION
-# ============================================================================
-ADMIN_EMAIL=admin@worldpedia.com
-ADMIN_PASSWORD=InitialAdminPassword@123
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-# ============================================================================
-# API DOCUMENTATION CONFIGURATION
-# ============================================================================
-API_DOCS_ENABLED=true
-API_DOCS_PATH=/api/docs
+3.  **Setup Environment Variables:**
+    Duplikasi file `.env.example` menjadi `.env` dan isi konfigurasi Anda.
+    ```bash
+    cp .env.example .env
+    ```
+
+## gf Konfigurasi Environment
+
+Berikut adalah penjelasan variabel yang harus diisi di file `.env`:
+
+| Kategori | Variable | Deskripsi |
+| :--- | :--- | :--- |
+| **Server** | `PORT` | Port aplikasi berjalan (Default: 5000) |
+| | `NODE_ENV` | `development` atau `production` |
+| **Database** | `MONGODB_URI` | Connection string MongoDB |
+| **JWT** | `JWT_ACCESS_SECRET` | Secret key untuk Access Token |
+| | `JWT_REFRESH_SECRET` | Secret key untuk Refresh Token |
+| **Email** | `SMTP_HOST` | Host SMTP (misal: smtp.gmail.com) |
+| | `SMTP_USER` | Email pengirim |
+| | `SMTP_PASS` | Password aplikasi email (App Password) |
+| **Cloudinary** | `CLOUDINARY_CLOUD_NAME` | Cloud name dari dashboard Cloudinary |
+| | `CLOUDINARY_API_KEY` | API Key Cloudinary |
+| | `CLOUDINARY_API_SECRET` | API Secret Cloudinary |
+| **Midtrans** | `MIDTRANS_SERVER_KEY` | Server Key dari Midtrans |
+| | `MIDTRANS_CLIENT_KEY` | Client Key dari Midtrans |
+| **Google** | `GOOGLE_CLIENT_ID` | OAuth Client ID |
+| | `GOOGLE_CLIENT_SECRET` | OAuth Client Secret |
+| | `GOOGLE_DRIVE_FOLDER_ID` | ID Folder Drive untuk simpan sertifikat |
+| | `GOOGLE_SERVICE_ACCOUNT_KEY`| JSON String dari Service Account Key |
+
+> **Catatan:** Untuk `GOOGLE_SERVICE_ACCOUNT_KEY`, pastikan formatnya adalah JSON string satu baris.
+
+## ▶️ Menjalankan Aplikasi
+
+**Mode Development (dengan Hot-Reload):**
+```bash
+npm run dev
