@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { snapClient, coreApi } from '../config/midtrans';
+import config from '../config/env';
 import { logger } from '../utils/logger';
 import { Payment, Enrollment } from '../models';
 import {
@@ -12,7 +13,8 @@ import {
 import {
   validateTransactionRequest,
   validateAmount,
-  mapMidtransStatus
+  mapMidtransStatus,
+  verifyWebhookSignature
 } from '../utils/payment-validator';
 import { NotFoundError, ValidationError } from '../types/error.types';
 
@@ -25,6 +27,7 @@ export class PaymentService {
     session.startTransaction();
 
     try {
+      // 1. Validate Request
       const validation = validateTransactionRequest(request);
       if (!validation.valid) {
         throw new ValidationError(`Validation failed: ${validation.errors.join(', ')}`);
@@ -35,15 +38,17 @@ export class PaymentService {
         throw new ValidationError(amountValidation.error || 'Invalid amount');
       }
 
+      // 2. Generate IDs
       const transactionId = uuidv4();
       const orderId = `${request.userId}-${Date.now()}`;
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
       const enrollmentId = request.metadata?.enrollmentId;
 
       if (!enrollmentId) {
         throw new ValidationError('Enrollment ID is required in metadata');
       }
 
+      // 3. Prepare Midtrans Parameter
       const parameter = {
         transaction_details: {
           order_id: orderId,
@@ -85,8 +90,10 @@ export class PaymentService {
         }
       };
 
+      // 4. Call Midtrans Snap API
       const midtransResult: any = await snapClient.createTransaction(parameter);
 
+      // 5. Save to MongoDB
       const payment = new Payment({
         transactionId,
         orderId,
@@ -184,9 +191,34 @@ export class PaymentService {
     session.startTransaction();
 
     try {
-      const { order_id, transaction_status, fraud_status, payment_type, transaction_id } = payload;
+      const { 
+        order_id, 
+        transaction_status, 
+        fraud_status, 
+        payment_type, 
+        transaction_id, 
+        signature_key, 
+        gross_amount 
+      } = payload;
+
+      // 1. Verify Signature (Security)
+      const isValidSignature = verifyWebhookSignature(
+        order_id, 
+        transaction_status, 
+        gross_amount, 
+        config.midtrans.serverKey || '', 
+        signature_key
+      );
+
+      if (!isValidSignature) {
+         logger.warn(`⚠️ Invalid Webhook Signature for Order: ${order_id}`);
+         throw new Error('Invalid Webhook Signature');
+      }
+
+      // 2. Determine New Status
       const newStatus = mapMidtransStatus(transaction_status, fraud_status);
       
+      // 3. Find Payment
       const payment = await Payment.findOne({ 
         $or: [{ orderId: order_id }, { transactionId: transaction_id }] 
       }).session(session);
@@ -195,11 +227,13 @@ export class PaymentService {
         throw new NotFoundError(`Payment not found for Order ID: ${order_id}`);
       }
 
+      // 4. Idempotency Check
       if (payment.status === newStatus) {
         await session.commitTransaction();
         return { success: true, status: newStatus };
       }
 
+      // 5. Update Payment
       payment.status = newStatus;
       payment.paymentMethod = payment_type || payment.paymentMethod;
       
@@ -209,12 +243,15 @@ export class PaymentService {
       
       await payment.save({ session });
 
-      // Update Enrollment based on payment status
+      // 6. Update Enrollment (Atomic)
       if (newStatus === PaymentStatus.SETTLEMENT || newStatus === PaymentStatus.CAPTURE) {
         const enrollment = await Enrollment.findById(payment.enrollmentId).session(session);
         if (enrollment) {
           enrollment.status = 'active';
-          enrollment.progress = 0;
+          // Only reset progress if previously pending/cancelled to avoid resetting active user
+          if (['pending_payment', 'cancelled'].includes(enrollment.status)) {
+             enrollment.progress = 0;
+          }
           await enrollment.save({ session });
           logger.info(`✅ Enrollment activated for user ${enrollment.userId}`);
         }
