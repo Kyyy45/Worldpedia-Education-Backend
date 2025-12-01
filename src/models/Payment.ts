@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { PaymentStatus } from '../types/payment.types';
 
 /**
  * Payment Interface
@@ -6,17 +7,18 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IPayment extends Document {
   enrollmentId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  studentId?: mongoose.Types.ObjectId; // Alias for userId
+  studentId?: mongoose.Types.ObjectId;
   courseId?: mongoose.Types.ObjectId;
   amount: number;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  status: PaymentStatus;
   paymentMethod: string;
   transactionId: string;
+  orderId: string; 
   midtransToken?: string;
   redirectUrl?: string;
   failureReason?: string;
   paidAt?: Date;
-  completedAt?: Date; // Alias for paidAt
+  completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,13 +31,13 @@ const paymentSchema = new Schema<IPayment>(
     enrollmentId: {
       type: Schema.Types.ObjectId,
       ref: 'Enrollment',
-      required: [true, 'Enrollment ID is required'],
+      required: true,
       index: true
     },
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'User ID is required'],
+      required: true,
       index: true
     },
     courseId: {
@@ -46,56 +48,41 @@ const paymentSchema = new Schema<IPayment>(
     },
     amount: {
       type: Number,
-      required: [true, 'Amount is required'],
-      min: [0, 'Amount cannot be negative']
+      required: true,
+      min: 0
     },
     status: {
       type: String,
-      enum: {
-        values: ['pending', 'completed', 'failed', 'cancelled'],
-        message: 'Invalid payment status'
-      },
-      default: 'pending',
+      enum: Object.values(PaymentStatus),
+      default: PaymentStatus.PENDING,
       index: true
     },
     paymentMethod: {
       type: String,
-      required: [true, 'Payment method is required'],
-      enum: {
-        values: ['credit_card', 'debit_card', 'bank_transfer', 'e_wallet'],
-        message: 'Invalid payment method'
-      }
+      default: 'unknown'
     },
     transactionId: {
       type: String,
-      required: [true, 'Transaction ID is required'],
+      required: true,
       unique: true,
       index: true
     },
-    midtransToken: {
+    orderId: {
       type: String,
-      default: null
+      required: true,
+      unique: true,
+      index: true
     },
-    redirectUrl: {
-      type: String,
-      default: null
-    },
-    failureReason: {
-      type: String,
-      default: null
-    },
-    paidAt: {
-      type: Date,
-      default: null
-    }
+    midtransToken: { type: String, default: null },
+    redirectUrl: { type: String, default: null },
+    failureReason: { type: String, default: null },
+    paidAt: { type: Date, default: null }
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
 /**
- * INDEXES for performance
+ * INDEXES
  */
 paymentSchema.index({ enrollmentId: 1, status: 1 });
 paymentSchema.index({ userId: 1, status: 1 });
@@ -105,46 +92,23 @@ paymentSchema.index({ paidAt: 1 });
 /**
  * METHODS
  */
-
-/**
- * Mark payment as completed
- */
 paymentSchema.methods.markCompleted = function (): void {
-  this.status = 'completed';
+  this.status = PaymentStatus.COMPLETED;
   this.paidAt = new Date();
 };
 
-/**
- * Mark payment as failed
- */
 paymentSchema.methods.markFailed = function (reason: string): void {
-  this.status = 'failed';
+  this.status = PaymentStatus.FAILED;
   this.failureReason = reason;
 };
 
 /**
- * VIRTUAL FIELDS - Aliases for service compatibility
+ * VIRTUAL FIELDS
  */
+paymentSchema.virtual('studentId').get(function () { return this.userId; }).set(function (value) { this.userId = value; });
+paymentSchema.virtual('completedAt').get(function () { return this.paidAt; }).set(function (value) { this.paidAt = value; });
 
-// studentId is an alias for userId
-paymentSchema.virtual('studentId').get(function () {
-  return this.userId;
-}).set(function (value) {
-  this.userId = value;
-});
-
-// completedAt is an alias for paidAt
-paymentSchema.virtual('completedAt').get(function () {
-  return this.paidAt;
-}).set(function (value) {
-  this.paidAt = value;
-});
-
-// Enable virtual fields in JSON output
 paymentSchema.set('toJSON', { virtuals: true });
 paymentSchema.set('toObject', { virtuals: true });
 
-/**
- * Export Payment Model
- */
 export const Payment = mongoose.model<IPayment>('Payment', paymentSchema);

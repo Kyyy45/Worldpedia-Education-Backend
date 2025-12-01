@@ -10,7 +10,9 @@ export enum PaymentStatus {
   CANCEL = 'cancel',
   EXPIRE = 'expire',
   REFUND = 'refund',
-  PARTIAL_REFUND = 'partial_refund'
+  PARTIAL_REFUND = 'partial_refund',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
 }
 
 export enum PaymentMethod {
@@ -27,8 +29,8 @@ export interface TransactionData {
   orderId: string;
   userId: string;
   amount: number;
-  status: PaymentStatus;
-  paymentMethod?: PaymentMethod;
+  status: PaymentStatus; // Update tipe ke Enum
+  paymentMethod?: PaymentMethod | string;
   snapToken?: string;
   redirectUrl?: string;
   createdAt: Date;
@@ -141,7 +143,7 @@ export interface PaymentHistory {
   orderId: string;
   amount: number;
   status: PaymentStatus;
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: PaymentMethod | string;
   createdAt: Date;
   paidAt?: Date;
 }

@@ -25,17 +25,6 @@ export class PaymentController {
 
       const result = await paymentService.createTransaction(request);
 
-      // Record transaction
-      transactionService.recordTransaction({
-        transactionId: result.transactionId,
-        orderId: result.orderId,
-        userId,
-        amount: result.amount,
-        status: PaymentStatus.PENDING,
-        snapToken: result.snapToken,
-        expiresAt: result.expiresAt
-      });
-
       res.status(201).json({
         success: true,
         data: result,

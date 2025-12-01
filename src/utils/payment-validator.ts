@@ -207,7 +207,9 @@ export const getStatusColor = (status: PaymentStatus): string => {
     [PaymentStatus.CANCEL]: 'secondary',
     [PaymentStatus.EXPIRE]: 'secondary',
     [PaymentStatus.REFUND]: 'info',
-    [PaymentStatus.PARTIAL_REFUND]: 'info'
+    [PaymentStatus.PARTIAL_REFUND]: 'info',
+    [PaymentStatus.COMPLETED]: 'success',
+    [PaymentStatus.FAILED]: 'danger'
   };
 
   return colorMap[status] || 'secondary';

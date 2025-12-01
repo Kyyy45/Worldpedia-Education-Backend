@@ -1,9 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-/**
- * User Interface
- * Defines the structure of a user document
- */
 export interface IUser extends Document {
   fullName: string;
   username: string;
@@ -23,156 +19,82 @@ export interface IUser extends Document {
   resetExpire?: Date;
   createdAt: Date;
   updatedAt: Date;
-  // Methods
   isAccountLocked(): boolean;
   incLoginAttempts(): void;
   resetLoginAttempts(): void;
   toJSON(): object;
 }
 
-/**
- * User Schema
- * MongoDB collection schema for users
- */
 const userSchema = new Schema<IUser>(
   {
     fullName: {
       type: String,
       required: [true, 'Full name is required'],
-      minlength: [3, 'Full name must be at least 3 characters'],
-      maxlength: [100, 'Full name must not exceed 100 characters'],
+      minlength: 3,
+      maxlength: 100,
       trim: true
     },
     username: {
       type: String,
       required: [true, 'Username is required'],
-      unique: true,
-      minlength: [3, 'Username must be at least 3 characters'],
-      maxlength: [30, 'Username must not exceed 30 characters'],
+      unique: true, // Otomatis membuat index
+      minlength: 3,
+      maxlength: 30,
       lowercase: true,
-      match: [/^[a-z0-9_]*[0-9][a-z0-9_]*$/, 'Username must contain at least one digit and can only contain lowercase letters, numbers and underscore'],
+      match: [/^[a-z0-9_]*[0-9][a-z0-9_]*$/, 'Invalid username format']
     },
     email: {
       type: String,
       required: [true, 'Email is required'],
-      unique: true,
+      unique: true, // Otomatis membuat index
       lowercase: true,
-      match: [
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        'Please provide a valid email address'
-      ],
-      index: true
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email address']
     },
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: [12, 'Password must be at least 12 characters'],
-      select: false, // Never select password by default
+      minlength: 12,
+      select: false,
       validate: {
         validator: function (v: string): boolean {
-          // Check for uppercase letter
-          if (!/[A-Z]/.test(v)) {
-            return false;
-          }
-          // Check for lowercase letter
-          if (!/[a-z]/.test(v)) {
-            return false;
-          }
-          // Check for digit
-          if (!/[0-9]/.test(v)) {
-            return false;
-          }
-          // Check for special character
-          if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(v)) {
-            return false;
-          }
-          // Check for sequential characters (like 123, abc, etc)
+          if (!/[A-Z]/.test(v)) return false;
+          if (!/[a-z]/.test(v)) return false;
+          if (!/[0-9]/.test(v)) return false;
+          if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(v)) return false;
           const sequentialPattern = /(.)\1{2,}|(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i;
-          if (sequentialPattern.test(v)) {
-            return false;
-          }
-          return true;
+          return !sequentialPattern.test(v);
         },
-        message: 'Password must contain uppercase, lowercase, digit, special character and cannot have sequential characters'
+        message: 'Password does not meet complexity requirements'
       }
     },
     role: {
       type: String,
-      enum: {
-        values: ['student', 'admin'],
-        message: 'Role must be student or admin'
-      },
-      default: 'student',
+      enum: ['student', 'admin'],
+      default: 'student'
     },
-    avatar: {
-      type: String,
-      default: null
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-      index: true
-    },
-    isLocked: {
-      type: Boolean,
-      default: false,
-      index: true
-    },
-    lockUntil: {
-      type: Date,
-      default: null
-    },
-    loginAttempts: {
-      type: Number,
-      default: 0
-    },
-    lastLogin: {
-      type: Date,
-      default: null
-    },
-    lastLogout: {
-      type: Date,
-      default: null
-    },
-    activationCode: {
-      type: String,
-      default: null
-    },
-    activationExpire: {
-      type: Date,
-      default: null
-    },
-    resetToken: {
-      type: String,
-      default: null
-    },
-    resetExpire: {
-      type: Date,
-      default: null
-    }
+    avatar: { type: String, default: null },
+    isVerified: { type: Boolean, default: false },
+    isLocked: { type: Boolean, default: false },
+    lockUntil: { type: Date, default: null },
+    loginAttempts: { type: Number, default: 0 },
+    lastLogin: { type: Date, default: null },
+    lastLogout: { type: Date, default: null },
+    activationCode: { type: String, default: null },
+    activationExpire: { type: Date, default: null },
+    resetToken: { type: String, default: null },
+    resetExpire: { type: Date, default: null }
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
-/**
- * INDEXES for performance optimization
- */
+// Indexes
 userSchema.index({ email: 1, isVerified: 1 });
+// userSchema.index({ username: 1 }); <--- DIHAPUS AGAR TIDAK DUPLIKAT
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ isLocked: 1, lockUntil: 1 });
 
-/**
- * METHODS
- */
-
-/**
- * Check if account is locked
- */
 userSchema.methods.isAccountLocked = function (): boolean {
-  // If lockUntil has passed, unlock the account
   if (this.lockUntil && this.lockUntil < new Date()) {
     this.isLocked = false;
     this.lockUntil = null;
@@ -182,22 +104,14 @@ userSchema.methods.isAccountLocked = function (): boolean {
   return this.isLocked;
 };
 
-/**
- * Increment login attempts
- */
 userSchema.methods.incLoginAttempts = function (): void {
   this.loginAttempts += 1;
-
-  // Lock account after 5 failed attempts
   if (this.loginAttempts >= 5) {
     this.isLocked = true;
-    this.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    this.lockUntil = new Date(Date.now() + 30 * 60 * 1000);
   }
 };
 
-/**
- * Reset login attempts
- */
 userSchema.methods.resetLoginAttempts = function (): void {
   this.loginAttempts = 0;
   this.isLocked = false;
@@ -205,11 +119,6 @@ userSchema.methods.resetLoginAttempts = function (): void {
   this.lastLogin = new Date();
 };
 
-/**
- * HOOKS
- */
-
-// Remove sensitive fields when converting to JSON
 userSchema.methods.toJSON = function () {
   const userObject = this.toObject();
   delete userObject.password;
@@ -219,7 +128,4 @@ userSchema.methods.toJSON = function () {
   return userObject;
 };
 
-/**
- * Export User Model
- */
 export const User = mongoose.model<IUser>('User', userSchema);
