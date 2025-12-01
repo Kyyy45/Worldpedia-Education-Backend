@@ -22,7 +22,6 @@ const certificateBatchSchema = new Schema<ICertificateBatch>(
       type: Schema.Types.ObjectId,
       ref: 'Course',
       required: [true, 'Course ID is required'],
-      index: true
     },
     batchName: {
       type: String,

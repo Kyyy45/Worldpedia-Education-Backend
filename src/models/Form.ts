@@ -126,7 +126,6 @@ const formSchema = new Schema<IForm>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Creator ID is required'],
-      index: true
     }
   },
   {

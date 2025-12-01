@@ -62,7 +62,6 @@ const courseSchema = new Schema<ICourse>(
       required: [true, 'Instructor name is required'],
       minlength: [3, 'Instructor name must be at least 3 characters'],
       maxlength: [100, 'Instructor name must not exceed 100 characters'],
-      index: true,
       trim: true
     },
     duration: {
@@ -109,7 +108,6 @@ const courseSchema = new Schema<ICourse>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Creator ID is required'],
-      index: true
     }
   },
   {

@@ -51,7 +51,6 @@ const userSchema = new Schema<IUser>(
       maxlength: [30, 'Username must not exceed 30 characters'],
       lowercase: true,
       match: [/^[a-z0-9_]*[0-9][a-z0-9_]*$/, 'Username must contain at least one digit and can only contain lowercase letters, numbers and underscore'],
-      index: true
     },
     email: {
       type: String,
@@ -104,7 +103,6 @@ const userSchema = new Schema<IUser>(
         message: 'Role must be student or admin'
       },
       default: 'student',
-      index: true
     },
     avatar: {
       type: String,
@@ -162,7 +160,6 @@ const userSchema = new Schema<IUser>(
  * INDEXES for performance optimization
  */
 userSchema.index({ email: 1, isVerified: 1 });
-userSchema.index({ username: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ isLocked: 1, lockUntil: 1 });

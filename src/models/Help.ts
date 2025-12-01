@@ -87,7 +87,6 @@ const helpSchema = new Schema<IHelp>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Creator ID is required'],
-      index: true
     }
   },
   {
