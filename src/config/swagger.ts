@@ -10,17 +10,13 @@ const options: swaggerJsdoc.Options = {
       description: 'Dokumentasi API untuk Platform Bimbel Worldpedia Education',
       contact: {
         name: 'Worldpedia Team',
-        email: 'admin@worldpedia.com', // Sesuaikan email
+        email: 'worldpediaeducation12345@gmail.com',
       },
     },
     servers: [
       {
         url: `http://localhost:${config.port}/api`,
         description: 'Development Server',
-      },
-      {
-        url: 'https://api.worldpedia.com/api', // Sesuaikan domain production nanti
-        description: 'Production Server',
       },
     ],
     components: {
