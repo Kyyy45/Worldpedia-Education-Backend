@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { Payment } from '../models'; // Menggunakan Payment Model dari MongoDB
 import {
   TransactionData,
   InvoiceData,
@@ -7,63 +8,57 @@ import {
   PaymentStatistics
 } from '../types/payment.types';
 import { generateInvoiceHTML, generateInvoiceText } from '../utils/invoice-generator';
-import { generateInvoiceNumber } from '../utils/payment-validator';
-
-/**
- * In-memory transaction storage
- * In production, replace with database (MongoDB)
- */
-const transactionStorage = new Map<string, TransactionData>();
-const invoiceStorage = new Map<string, InvoiceData>();
 
 export class TransactionService {
   /**
-   * Record transaction
+   * Get transaction by ID (from Database)
    */
-  recordTransaction(transaction: Omit<TransactionData, 'createdAt'>): TransactionData {
+  async getTransaction(transactionId: string): Promise<TransactionData | null> {
     try {
-      const data: TransactionData = {
-        ...transaction,
-        createdAt: new Date()
+      const payment = await Payment.findOne({ 
+        $or: [{ transactionId }, { orderId: transactionId }] 
+      });
+      
+      if (!payment) return null;
+
+      // Mapping dari Payment Document ke TransactionData Interface
+      return {
+        transactionId: payment.transactionId,
+        orderId: payment.orderId,
+        userId: payment.userId.toString(),
+        amount: payment.amount,
+        status: payment.status as PaymentStatus,
+        paymentMethod: payment.paymentMethod,
+        snapToken: payment.midtransToken,
+        redirectUrl: payment.redirectUrl,
+        createdAt: payment.createdAt,
+        paidAt: payment.paidAt || undefined,
+        expiresAt: new Date(payment.createdAt.getTime() + 24 * 60 * 60 * 1000) // Asumsi expire 24 jam
       };
-
-      transactionStorage.set(transaction.transactionId, data);
-      logger.info(`✅ Transaction recorded: ${transaction.transactionId}`);
-
-      return data;
     } catch (error: any) {
-      logger.error('Failed to record transaction:', error);
-      throw error;
+      logger.error('Error fetching transaction:', error);
+      return null;
     }
   }
 
   /**
-   * Get transaction by ID
+   * Get user's transactions (from Database)
    */
-  getTransaction(transactionId: string): TransactionData | null {
-    return transactionStorage.get(transactionId) || null;
-  }
-
-  /**
-   * Get user's transactions
-   */
-  getUserTransactions(userId: string, limit: number = 50): PaymentHistory[] {
+  async getUserTransactions(userId: string, limit: number = 50): Promise<PaymentHistory[]> {
     try {
-      const transactions = Array.from(transactionStorage.values())
-        .filter((t) => t.userId === userId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, limit)
-        .map((t) => ({
-          transactionId: t.transactionId,
-          orderId: t.orderId,
-          amount: t.amount,
-          status: t.status,
-          paymentMethod: t.paymentMethod,
-          createdAt: t.createdAt,
-          paidAt: t.paidAt
-        }));
+      const payments = await Payment.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(limit);
 
-      return transactions;
+      return payments.map((p) => ({
+        transactionId: p.transactionId,
+        orderId: p.orderId,
+        amount: p.amount,
+        status: p.status as PaymentStatus,
+        paymentMethod: p.paymentMethod,
+        createdAt: p.createdAt,
+        paidAt: p.paidAt || undefined
+      }));
     } catch (error: any) {
       logger.error('Failed to get user transactions:', error);
       throw error;
@@ -71,25 +66,23 @@ export class TransactionService {
   }
 
   /**
-   * Get transactions by status
+   * Get transactions by status (Admin feature - from Database)
    */
-  getTransactionsByStatus(status: PaymentStatus, limit: number = 50): PaymentHistory[] {
+  async getTransactionsByStatus(status: PaymentStatus, limit: number = 50): Promise<PaymentHistory[]> {
     try {
-      const transactions = Array.from(transactionStorage.values())
-        .filter((t) => t.status === status)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, limit)
-        .map((t) => ({
-          transactionId: t.transactionId,
-          orderId: t.orderId,
-          amount: t.amount,
-          status: t.status,
-          paymentMethod: t.paymentMethod,
-          createdAt: t.createdAt,
-          paidAt: t.paidAt
-        }));
+      const payments = await Payment.find({ status })
+        .sort({ createdAt: -1 })
+        .limit(limit);
 
-      return transactions;
+      return payments.map((p) => ({
+        transactionId: p.transactionId,
+        orderId: p.orderId,
+        amount: p.amount,
+        status: p.status as PaymentStatus,
+        paymentMethod: p.paymentMethod,
+        createdAt: p.createdAt,
+        paidAt: p.paidAt || undefined
+      }));
     } catch (error: any) {
       logger.error('Failed to get transactions by status:', error);
       throw error;
@@ -97,38 +90,56 @@ export class TransactionService {
   }
 
   /**
-   * Create invoice
+   * Get invoice data (Dynamically generated from Payment Data)
+   * Note: Karena Payment model standar tidak menyimpan detail item secara mendalam,
+   * kita membuat invoice generik berdasarkan data enrollment/payment.
    */
-  createInvoice(invoice: Omit<InvoiceData, 'invoiceId'>): InvoiceData {
+  async getInvoice(invoiceId: string): Promise<InvoiceData | null> {
     try {
-      const invoiceId = generateInvoiceNumber();
-      const data: InvoiceData = {
-        ...invoice,
-        invoiceId
+      // Cari payment berdasarkan transactionId atau orderId (invoiceId dianggap salah satu dari ini)
+      const payment = await Payment.findOne({ 
+        $or: [{ transactionId: invoiceId }, { orderId: invoiceId }] 
+      }).populate('userId', 'fullName email');
+
+      if (!payment) return null;
+
+      const user = payment.userId as any; // Type casting karena populate
+
+      return {
+        invoiceId: payment.transactionId, // Menggunakan Transaction ID sebagai No Invoice
+        transactionId: payment.transactionId,
+        orderId: payment.orderId,
+        customerId: user._id.toString(),
+        customerName: user.fullName || 'Unknown Customer',
+        customerEmail: user.email || 'No Email',
+        items: [{ 
+          id: '1', 
+          name: 'Course Enrollment Fee', 
+          price: payment.amount, 
+          quantity: 1, 
+          subtotal: payment.amount 
+        }],
+        subtotal: payment.amount,
+        discount: 0,
+        tax: 0,
+        total: payment.amount,
+        status: payment.status as PaymentStatus,
+        paymentMethod: payment.paymentMethod as any,
+        createdAt: payment.createdAt,
+        paidAt: payment.paidAt || undefined,
+        notes: payment.failureReason ? `Failed: ${payment.failureReason}` : undefined
       };
-
-      invoiceStorage.set(invoiceId, data);
-      logger.info(`✅ Invoice created: ${invoiceId}`);
-
-      return data;
     } catch (error: any) {
-      logger.error('Failed to create invoice:', error);
-      throw error;
+      logger.error('Error fetching invoice data:', error);
+      return null;
     }
-  }
-
-  /**
-   * Get invoice by ID
-   */
-  getInvoice(invoiceId: string): InvoiceData | null {
-    return invoiceStorage.get(invoiceId) || null;
   }
 
   /**
    * Get invoice as HTML
    */
-  getInvoiceHTML(invoiceId: string): string | null {
-    const invoice = this.getInvoice(invoiceId);
+  async getInvoiceHTML(invoiceId: string): Promise<string | null> {
+    const invoice = await this.getInvoice(invoiceId);
     if (!invoice) return null;
 
     return generateInvoiceHTML(invoice);
@@ -137,88 +148,72 @@ export class TransactionService {
   /**
    * Get invoice as plain text
    */
-  getInvoiceText(invoiceId: string): string | null {
-    const invoice = this.getInvoice(invoiceId);
+  async getInvoiceText(invoiceId: string): Promise<string | null> {
+    const invoice = await this.getInvoice(invoiceId);
     if (!invoice) return null;
 
     return generateInvoiceText(invoice);
   }
 
   /**
-   * Get user's invoices
+   * Get payment statistics (Aggregated from Database)
    */
-  getUserInvoices(customerId: string, limit: number = 50): InvoiceData[] {
+  async getStatistics(): Promise<PaymentStatistics> {
     try {
-      const invoices = Array.from(invoiceStorage.values())
-        .filter((i) => i.customerId === customerId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, limit);
+      const stats = await Payment.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+            totalTransactions: { $sum: 1 },
+            successfulTransactions: {
+              $sum: {
+                $cond: [
+                  { $or: [{ $eq: ['$status', 'settlement'] }, { $eq: ['$status', 'capture'] }] },
+                  1,
+                  0
+                ]
+              }
+            },
+            pendingTransactions: {
+              $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+            },
+            failedTransactions: {
+              $sum: {
+                $cond: [
+                  { $in: ['$status', ['deny', 'cancel', 'expire', 'failed']] },
+                  1,
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ]);
 
-      return invoices;
-    } catch (error: any) {
-      logger.error('Failed to get user invoices:', error);
-      throw error;
-    }
-  }
+      const result = stats[0] || {
+        totalRevenue: 0,
+        totalTransactions: 0,
+        successfulTransactions: 0,
+        pendingTransactions: 0,
+        failedTransactions: 0
+      };
 
-  /**
-   * Get statistics
-   */
-  getStatistics(): PaymentStatistics {
-    try {
-      const transactions = Array.from(transactionStorage.values());
-
-      const totalTransactions = transactions.length;
-      const totalRevenue = transactions.reduce((sum, t) => sum + t.amount, 0);
-      const successfulTransactions = transactions.filter(
-        (t) => t.status === PaymentStatus.SETTLEMENT || t.status === PaymentStatus.CAPTURE
-      ).length;
-      const pendingTransactions = transactions.filter((t) => t.status === PaymentStatus.PENDING).length;
-      const failedTransactions = transactions.filter(
-        (t) =>
-          t.status === PaymentStatus.DENY ||
-          t.status === PaymentStatus.CANCEL ||
-          t.status === PaymentStatus.EXPIRE
-      ).length;
+      const averageTransactionAmount = result.totalTransactions > 0 
+        ? result.totalRevenue / result.totalTransactions 
+        : 0;
+        
+      const successRate = result.totalTransactions > 0 
+        ? (result.successfulTransactions / result.totalTransactions) * 100 
+        : 0;
 
       return {
-        totalTransactions,
-        totalRevenue,
-        successfulTransactions,
-        pendingTransactions,
-        failedTransactions,
-        averageTransactionAmount: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
-        successRate: totalTransactions > 0 ? (successfulTransactions / totalTransactions) * 100 : 0
+        ...result,
+        averageTransactionAmount,
+        successRate
       };
     } catch (error: any) {
       logger.error('Failed to get statistics:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update transaction status
-   */
-  updateTransactionStatus(transactionId: string, status: PaymentStatus): TransactionData | null {
-    try {
-      const transaction = transactionStorage.get(transactionId);
-      if (!transaction) return null;
-
-      transaction.status = status;
-      if (
-        status === PaymentStatus.SETTLEMENT ||
-        status === PaymentStatus.CAPTURE ||
-        status === PaymentStatus.REFUND
-      ) {
-        transaction.paidAt = new Date();
-      }
-
-      transactionStorage.set(transactionId, transaction);
-      logger.info(`✅ Transaction status updated: ${transactionId} → ${status}`);
-
-      return transaction;
-    } catch (error: any) {
-      logger.error('Failed to update transaction status:', error);
       throw error;
     }
   }

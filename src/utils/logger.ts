@@ -1,71 +1,57 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
-/**
- * Log levels
- */
 export enum LogLevel {
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARN = 'WARN',
-  ERROR = 'ERROR'
+  DEBUG = "DEBUG",
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
 }
 
-/**
- * Logger class
- */
 export class Logger {
-  private logDir = path.join(process.cwd(), 'logs');
-  private isFileLoggingEnabled = true; // Flag untuk status file logging
+  private logDir = path.join(process.cwd(), "logs");
+  // Matikan file logging secara default di environment serverless/production
+  private isFileLoggingEnabled = process.env.NODE_ENV !== "production";
 
   constructor() {
-    this.ensureLogDirectory();
+    // Hanya buat direktori jika logging file aktif
+    if (this.isFileLoggingEnabled) {
+      this.ensureLogDirectory();
+    }
   }
 
-  /**
-   * Ensure log directory exists
-   * Modified to handle Read-Only environments (like Vercel) gracefully
-   */
   private ensureLogDirectory(): void {
     try {
       if (!fs.existsSync(this.logDir)) {
         fs.mkdirSync(this.logDir, { recursive: true });
       }
     } catch (error) {
-      // Jika gagal membuat folder (misal di Vercel), matikan fitur log ke file
-      console.warn('⚠️ Logger: Cannot create logs directory (Read-only filesystem detected). File logging disabled.');
+      console.warn(
+        "⚠️ Logger: Cannot create logs directory. File logging disabled."
+      );
       this.isFileLoggingEnabled = false;
     }
   }
 
-  /**
-   * Format log message
-   */
   private formatMessage(level: LogLevel, message: string, data?: any): string {
     const timestamp = new Date().toISOString();
-    const dataStr = data ? `\n${JSON.stringify(data, null, 2)}` : '';
+    const dataStr = data ? `\n${JSON.stringify(data, null, 2)}` : "";
     return `[${timestamp}] [${level}] ${message}${dataStr}`;
   }
 
-  /**
-   * Write to console and file
-   */
   private write(level: LogLevel, message: string, data?: any): void {
     const formattedMessage = this.formatMessage(level, message, data);
 
-    // 1. Console output (Selalu jalan, ini yang akan muncul di Vercel Logs)
+    // 1. Console output (Wajib untuk Vercel Logs)
     const consoleMethod = this.getConsoleMethod(level);
     consoleMethod(formattedMessage);
 
-    // 2. File output (Hanya jika diizinkan / tidak error saat init)
-    if (this.isFileLoggingEnabled && (process.env.NODE_ENV === 'production' || level === LogLevel.ERROR)) {
+    // 2. File output (Hanya di local development)
+    if (this.isFileLoggingEnabled) {
       this.writeToFile(level, formattedMessage);
     }
   }
 
-  /**
-   * Get appropriate console method
-   */
   private getConsoleMethod(level: LogLevel): Function {
     switch (level) {
       case LogLevel.DEBUG:
@@ -81,101 +67,72 @@ export class Logger {
     }
   }
 
-  /**
-   * Write log to file
-   */
   private writeToFile(level: LogLevel, message: string): void {
-    if (!this.isFileLoggingEnabled) return; // Double check
-
     try {
-      const date = new Date().toISOString().split('T')[0];
-      const filename = path.join(this.logDir, `${level.toLowerCase()}-${date}.log`);
-      fs.appendFileSync(filename, message + '\n');
+      const date = new Date().toISOString().split("T")[0];
+      const filename = path.join(
+        this.logDir,
+        `${level.toLowerCase()}-${date}.log`
+      );
+      fs.appendFileSync(filename, message + "\n");
     } catch (error) {
-      // Silent fail jika tiba-tiba tidak bisa nulis, alihkan ke console error
-      console.error('Failed to write log file:', error);
+      // Silent fail agar tidak crash aplikasi
     }
   }
 
-  /**
-   * Debug log
-   */
+  // ... (Sisa method debug, info, warn, error, logRequest, dll tetap sama)
   debug(message: string, data?: any): void {
     this.write(LogLevel.DEBUG, message, data);
   }
-
-  /**
-   * Info log
-   */
   info(message: string, data?: any): void {
     this.write(LogLevel.INFO, message, data);
   }
-
-  /**
-   * Warn log
-   */
   warn(message: string, data?: any): void {
     this.write(LogLevel.WARN, message, data);
   }
-
-  /**
-   * Error log
-   */
   error(message: string, error?: Error | any): void {
-    const errorData = error instanceof Error 
-      ? {
-          name: error.name,
-          errorMessage: error.message,
-          stack: error.stack
-        }
-      : error;
+    const errorData =
+      error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : error;
     this.write(LogLevel.ERROR, message, errorData);
   }
-
-  /**
-   * Log API request
-   */
   logRequest(method: string, path: string, statusCode?: number): void {
-    const msg = `${method} ${path}${statusCode ? ` - ${statusCode}` : ''}`;
-    this.info(msg);
+    this.info(`${method} ${path}${statusCode ? ` - ${statusCode}` : ""}`);
   }
-
-  /**
-   * Log authentication event
-   */
-  logAuth(action: string, userId: string, success: boolean, details?: any): void {
-    const message = `Auth: ${action} for user ${userId} - ${success ? 'SUCCESS' : 'FAILED'}`;
-    this.info(message, details);
+  logAuth(
+    action: string,
+    userId: string,
+    success: boolean,
+    details?: any
+  ): void {
+    this.info(
+      `Auth: ${action} for user ${userId} - ${success ? "SUCCESS" : "FAILED"}`,
+      details
+    );
   }
-
-  /**
-   * Log database operation
-   */
   logDatabase(operation: string, collection: string, details?: any): void {
-    const message = `Database: ${operation} on ${collection}`;
-    this.debug(message, details);
+    this.debug(`Database: ${operation} on ${collection}`, details);
   }
-
-  /**
-   * Log payment operation
-   */
-  logPayment(action: string, amount: number, status: string, details?: any): void {
-    const message = `Payment: ${action} - Amount: ${amount}, Status: ${status}`;
-    this.info(message, details);
+  logPayment(
+    action: string,
+    amount: number,
+    status: string,
+    details?: any
+  ): void {
+    this.info(
+      `Payment: ${action} - Amount: ${amount}, Status: ${status}`,
+      details
+    );
   }
-
-  /**
-   * Log email operation
-   */
   logEmail(recipient: string, subject: string, success: boolean): void {
-    const message = `Email: Sent to ${recipient} - Subject: ${subject} - ${success ? 'SUCCESS' : 'FAILED'}`;
-    this.info(message);
+    this.info(
+      `Email: Sent to ${recipient} - Subject: ${subject} - ${
+        success ? "SUCCESS" : "FAILED"
+      }`
+    );
   }
 }
 
-/**
- * Create logger instance
- */
 export const logger = new Logger();
-
 export default logger;

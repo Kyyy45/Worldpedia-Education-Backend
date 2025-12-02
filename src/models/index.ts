@@ -14,3 +14,4 @@ export { Payment, type IPayment } from './Payment';
 export { Help, type IHelp } from './Help';
 export { Analytics, type IAnalytics } from './Analytics';
 export { AuditLog, type IAuditLog } from './AuditLog';
+export { OAuthAccount, type IOAuthAccount } from './OAuthAccount';
