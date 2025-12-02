@@ -1,41 +1,79 @@
 # ----------------------------------------------------------------
-# File Rahasia (PENTING!)
-# JANGAN PERNAH HAPUS INI DARI .gitignore
+# Dependencies
 # ----------------------------------------------------------------
-.env
-.env.*
-*.env
-
-# ----------------------------------------------------------------
-# Dependensi & Build Artifacts
-# ----------------------------------------------------------------
-# Folder dependensi Node.js
 node_modules/
-
-# Folder build hasil kompilasi TypeScript
-dist/
-build/
-
-# NPM cache
-.npm
-
-# File lock Yarn (jika suatu hari dipakai)
+package-lock.json   # Opsional: Hapus baris ini jika Anda ingin mengunci versi dependensi (Disarankan tetap di-commit)
 yarn.lock
 
 # ----------------------------------------------------------------
-# File Log & Debugging
+# Build Output (Hasil Kompilasi TypeScript)
 # ----------------------------------------------------------------
-# Log umum
+dist/
+build/
+out/
+coverage/
+
+# ----------------------------------------------------------------
+# Environment Variables (SANGAT PENTING: JANGAN DI-COMMIT)
+# ----------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+
+# ----------------------------------------------------------------
+# Logs & Debugging
+# ----------------------------------------------------------------
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
-# Log dari testing.txt Anda
+# ----------------------------------------------------------------
+# OS Generated Files
+# ----------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ----------------------------------------------------------------
+# IDE & Editor Configs
+# ----------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ----------------------------------------------------------------
+# Temporary Files
+# ----------------------------------------------------------------
+tmp/
+temp/
+uploads/           # Jika Anda menyimpan upload lokal sementara
+*.bak
+*.tmp
+
+# ----------------------------------------------------------------
+# Testing
+# ----------------------------------------------------------------
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# ----------------------------------------------------------------
+# Specific to this project (jika ada file output/rahasia lain)
+# ----------------------------------------------------------------
 cookie.txt
 jar.txt
-
-# Laporan crash
-report.*.json
-*.stackdump
+google-credentials.json # Jika ada file key JSON
