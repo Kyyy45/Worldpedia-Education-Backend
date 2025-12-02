@@ -41,7 +41,7 @@ const startServer = async (): Promise<void> => {
      * ============================================================================
      */
 
-    const server = app.listen(PORT, () => {
+    const server = app.listen(() => {
       logger.info(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
