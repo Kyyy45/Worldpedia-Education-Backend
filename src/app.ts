@@ -73,6 +73,22 @@ export const createApp = (): Express => {
   logger.info('✅ Swagger docs mounted on /api-docs');
 
   /**
+   * ROOT ROUTE
+   */
+  app.get('/', (_req: Request, res: Response) => {
+    res.status(200).json({
+      success: true,
+      message: 'Worldpedia Education Backend is Running! 🚀',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        health: '/health',
+        api: '/api',
+        docs: '/api-docs'
+      }
+    });
+  });
+
+  /**
    * HEALTH CHECK
    */
   app.get('/health', (_req: Request, res: Response) => {
