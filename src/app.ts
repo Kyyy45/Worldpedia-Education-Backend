@@ -39,7 +39,7 @@ export const createApp = (): Express => {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https:']
       }
@@ -47,7 +47,7 @@ export const createApp = (): Express => {
   }));
 
   app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN || '*',
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
